@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Cown VPN</string>
+    <string name="status_disconnected">未连接</string>
+    <string name="status_connecting">正在连接…</string>
+    <string name="status_connected">已连接</string>
+    <string name="action_import">导入</string>
+    <string name="action_validate">验证</string>
+    <string name="action_connect">连接</string>
+    <string name="action_disconnect">断开</string>
+    <string name="conf_hint">粘贴 WireGuard 配置（[Interface] / [Peer]）</string>
+    <string name="err_empty">配置内容为空</string>
+    <string name="err_invalid">配置无效：%1$s</string>
+    <string name="err_no_route">没有可用的 AllowedIPs 路由</string>
+    <string name="err_address">无法解析 Address（需要 10.8.0.2/24 这种写法）</string>
+    <string name="validated">配置有效\n地址 %1$s\nEndpoint %2$s\nDNS %3$s\nAllowedIPs %4$s</string>
+    <string name="vpn_denied">未授予 VPN 权限，无法连接</string>
+    <string name="vpn_revoked">系统已关闭 VPN</string>
+    <string name="notif_denied">未授予通知权限。系统可能不显示 VPN 通知，仍会尝试连接。</string>
+    <string name="notif_channel">Cown VPN</string>
+    <string name="notif_channel_desc">VPN 连接状态</string>
+    <string name="notif_connecting">正在连接</string>
+    <string name="notif_connected">已连接 %1$s</string>
+    <string name="help">首次连接会请求 VPN 与通知权限。请粘贴或导入 .conf，先验证再连接。不要把真实配置提交到仓库。</string>
+    <string name="imported">已导入配置</string>
+    <string name="import_failed">读取文件失败：%1$s</string>
+    <string name="import_too_large">文件过大</string>
+    <string name="connect_failed">连接失败：%1$s</string>
+</resources>
