@@ -10,7 +10,8 @@ Cown VPN 是跨平台 WireGuard **桌面**客户端，基于 [wireguard-go](http
 | macOS | 完整（`utun` + `route`/`ifconfig`） |
 | Windows | 完整（需 **Wintun** + 管理员） |
 
-> iOS/iPadOS 为独立 Network Extension 模板，见 `platforms/ios/`（本 README 聚焦桌面）。
+> iOS/iPadOS 为独立 Network Extension 模板，见 `platforms/ios/`。  
+> Android 客户端在 `android/`。AAR 不入库，在已安装 Go、gomobile、Android SDK 与 NDK 的 Mac 上执行 `./android/scripts/build_aar.sh`。详见 [android/README.md](android/README.md)。
 
 ---
 
@@ -113,6 +114,22 @@ Listen Port 留空由系统分配，或关掉占用该 UDP 端口的进程。
 
 配置目录：`~/.config/mywgclient/`（`settings.json`、`profiles/`、`profile.conf`）。
 
+## Android
+
+在装有 **Go 1.26+（1.27 可以）、gomobile、Android Studio（SDK 35 + NDK）** 的 Mac 上，于仓库根目录：
+
+```bash
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/<version>"
+export PATH="$(go env GOPATH)/bin:$PATH"
+go install golang.org/x/mobile/cmd/gomobile@latest
+go install golang.org/x/mobile/cmd/gobind@latest
+gomobile init
+./android/scripts/build_aar.sh
+```
+
+脚本写出 `android/app/libs/wgmobile.aar`。用 Android Studio 打开 **`android/`** 目录，Run 调试包。界面可粘贴或导入 `.conf`，验证后连接；首次连接会请求 VPN 与通知权限。不要提交真实配置。当前没有设备或模拟器时，不必安装运行。
+
 ## 开发
 
 ```bash
@@ -132,6 +149,9 @@ internal/ui/         Fyne 界面
 internal/platform/   权限 / Wintun / 自启动
 internal/diag/       连接诊断
 internal/errs/       中文友好错误
+pkg/wgmobile/        gomobile API（iOS XCFramework / Android AAR）
+android/             Android Studio 工程与 build_aar.sh
+platforms/ios/       iOS Network Extension 模板
 ```
 
 ## 许可与依赖

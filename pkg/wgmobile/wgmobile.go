@@ -1,16 +1,22 @@
-// Package wgmobile exposes a tiny gomobile-friendly WireGuard API for iOS Network Extensions.
+// Package wgmobile exposes a tiny gomobile-friendly WireGuard API for mobile clients.
 //
-// Build (on macOS with Xcode + gomobile):
+// iOS (on macOS with Xcode + gomobile):
 //
 //	go install golang.org/x/mobile/cmd/gomobile@latest
 //	gomobile init
 //	gomobile bind -target=ios -o WGMobile.xcframework github.com/user/mywgclient/pkg/wgmobile
 //
-// On iOS you generally cannot call CreateTUN from a normal process. Prefer using
-// ParseConf / BuildUAPI from the Packet Tunnel provider together with packet I/O
-// bridged through NEPacketTunnelFlow (or WireGuardKit). Start/Stop below use
-// wireguard-go userspace when the host provides a usable TUN (desktop / some
-// extension setups); treat them as a thin control plane for status & UAPI.
+// Android (on a machine with the Android SDK, NDK, and gomobile):
+//
+//	./android/scripts/build_aar.sh
+//
+// That writes android/app/libs/wgmobile.aar. On iOS you generally cannot call
+// CreateTUN from a normal process. Prefer ParseConf / BuildUAPI from the Packet
+// Tunnel provider together with packet I/O bridged through NEPacketTunnelFlow
+// (or WireGuardKit). On Android, VpnService creates the TUN; call SetProtector
+// and StartWithFD with that file descriptor. Start/Stop below use wireguard-go
+// userspace when the host provides a usable TUN (desktop / some extension
+// setups); treat them as a thin control plane for status and UAPI.
 package wgmobile
 
 import (
@@ -21,13 +27,24 @@ import (
 
 	"github.com/user/mywgclient/internal/config"
 	"github.com/user/mywgclient/internal/tunnel"
+
+	"golang.zx2c4.com/wireguard/conn"
 )
 
 var (
-	mu     sync.Mutex
-	active *tunnel.Tunnel
-	lastCfg string
+	mu         sync.Mutex
+	active     *tunnel.Tunnel
+	lastCfg    string
+	protector  Protector
+	activeBind conn.Bind
 )
+
+// Protector is implemented by Android VpnService so WireGuard's UDP sockets
+// are excluded from the tunnel. Without it, handshake packets loop into the VPN.
+// gomobile maps this to wgmobile.Protector.protect(long).
+type Protector interface {
+	Protect(fd int) bool
+}
 
 // TunnelStatus is a JSON-serializable snapshot for Swift.
 type TunnelStatus struct {
@@ -43,13 +60,13 @@ type TunnelStatus struct {
 
 // NetworkHints helps Swift build NEPacketTunnelNetworkSettings.
 type NetworkHints struct {
-	Address       string   `json:"address"`
-	AddressIP     string   `json:"address_ip"`
-	DNS           []string `json:"dns"`
-	MTU           int      `json:"mtu"`
-	Endpoint      string   `json:"endpoint"`
-	AllowedIPs    []string `json:"allowed_ips"`
-	ServerPubKey  string   `json:"server_public_key"`
+	Address      string   `json:"address"`
+	AddressIP    string   `json:"address_ip"`
+	DNS          []string `json:"dns"`
+	MTU          int      `json:"mtu"`
+	Endpoint     string   `json:"endpoint"`
+	AllowedIPs   []string `json:"allowed_ips"`
+	ServerPubKey string   `json:"server_public_key"`
 }
 
 // ParseConf validates WireGuard conf text and returns JSON NetworkHints.
@@ -87,6 +104,7 @@ func BuildUAPI(confText string) (string, error) {
 
 // Start brings up a userspace WireGuard tunnel from conf text (desktop / test).
 // On iOS Network Extension, prefer ParseConf + BuildUAPI and drive packets via NE.
+// On Android, use StartWithFD with the VpnService TUN fd instead of Start.
 func Start(confText string) error {
 	cfg, err := config.ParseImportText(confText)
 	if err != nil {
@@ -106,7 +124,58 @@ func Start(confText string) error {
 		return err
 	}
 	active = t
+	activeBind = nil
 	lastCfg = confText
+	return nil
+}
+
+// SetProtector registers the Android VpnService.protect hook. Pass nil to clear.
+// Call it before StartWithFD. Safe to call from any goroutine.
+func SetProtector(p Protector) {
+	mu.Lock()
+	protector = p
+	mu.Unlock()
+}
+
+// ClearProtector removes the hook registered by SetProtector.
+func ClearProtector() { SetProtector(nil) }
+
+// StartWithFD brings up userspace WireGuard on an existing TUN fd (Android VpnService).
+// The fd is duplicated; the caller may close the original after this call returns.
+// Address, DNS, and routes are left to the caller. SetProtector should already
+// be set so the UDP sockets can be excluded from the VPN. SocketV4 and SocketV6
+// expose those fds for a second protect pass after this returns.
+func StartWithFD(confText string, tunFd int) error {
+	cfg, err := config.ParseImportText(confText)
+	if err != nil {
+		return err
+	}
+	mu.Lock()
+	busy := active != nil
+	mu.Unlock()
+	if busy {
+		return fmt.Errorf("隧道已连接，请先 Stop")
+	}
+
+	tunDev, bind, err := adoptAndroidTUN(cfg, tunFd)
+	if err != nil {
+		return err
+	}
+	t := tunnel.New()
+	if err := t.UpFromDevice(cfg, &fixedMTU{Device: tunDev, mtu: cfg.MTU}, &protectingBind{Bind: bind}); err != nil {
+		return err
+	}
+
+	mu.Lock()
+	if active != nil {
+		mu.Unlock()
+		_ = t.Disconnect()
+		return fmt.Errorf("隧道已连接，请先 Stop")
+	}
+	active = t
+	activeBind = bind
+	lastCfg = confText
+	mu.Unlock()
 	return nil
 }
 
@@ -114,6 +183,7 @@ func Start(confText string) error {
 func Stop() {
 	mu.Lock()
 	defer mu.Unlock()
+	activeBind = nil
 	if active != nil {
 		_ = active.Disconnect()
 		active = nil

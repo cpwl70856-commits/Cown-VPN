@@ -353,6 +353,92 @@ func (t *Tunnel) start(cfg *config.Config, mode RouteMode, gen uint64) error {
 	return nil
 }
 
+// UpFromDevice runs wireguard-go on a TUN device the caller already created.
+// Android VpnService owns the address, DNS, and routes; this method does not
+// configure them. On success the Tunnel owns tunDev and closes it from
+// Disconnect. On failure tunDev is closed. A nil bind uses the platform default.
+func (t *Tunnel) UpFromDevice(cfg *config.Config, tunDev tun.Device, bind conn.Bind) error {
+	if tunDev == nil {
+		return fmt.Errorf("TUN 设备为空")
+	}
+	if err := cfg.Validate(); err != nil {
+		_ = tunDev.Close()
+		return err
+	}
+	if bind == nil {
+		bind = conn.NewDefaultBind()
+	}
+
+	t.mu.Lock()
+	if t.status == StatusConnected || t.status == StatusConnecting || t.status == StatusTesting {
+		st := t.status
+		t.mu.Unlock()
+		_ = tunDev.Close()
+		return fmt.Errorf("已处于 %s 状态，请先断开", st)
+	}
+	t.connectGen++
+	gen := t.connectGen
+	t.status = StatusConnecting
+	t.routeMode = RouteModeNone
+	t.lastRouteErr = nil
+	t.connectedAt = time.Time{}
+	t.appliedRoutes = nil
+	t.prevRx, t.prevTx = 0, 0
+	t.prevAt = time.Time{}
+	t.rxPerSec, t.txPerSec = 0, 0
+	t.mu.Unlock()
+
+	fail := func(err error) error {
+		t.setStatusIfGen(gen, StatusDisconnected)
+		return err
+	}
+
+	realName, err := tunDev.Name()
+	if err != nil || realName == "" {
+		realName = cfg.TUNName
+		if realName == "" {
+			realName = "wg0"
+		}
+	}
+
+	logger := device.NewLogger(device.LogLevelError, fmt.Sprintf("(%s) ", realName))
+	dev := device.NewDevice(tunDev, bind, logger)
+	// Before peers exist. Android networks change address without a new endpoint.
+	dev.DisableSomeRoamingForBrokenMobileSemantics()
+
+	uapi, err := buildUAPI(cfg)
+	if err != nil {
+		dev.Close()
+		return fail(err)
+	}
+	slog.Debug("wireguard uapi", "config", redactUAPI(uapi))
+	if err := dev.IpcSet(uapi); err != nil {
+		dev.Close()
+		return fail(fmt.Errorf("IpcSet: %w", err))
+	}
+	if err := dev.Up(); err != nil {
+		dev.Close()
+		return fail(fmt.Errorf("device up: %w", err))
+	}
+
+	t.mu.Lock()
+	if t.connectGen != gen {
+		t.mu.Unlock()
+		dev.Close()
+		return fmt.Errorf("连接已取消")
+	}
+	t.dev = dev
+	t.tunDev = tunDev
+	t.name = realName
+	t.addr = cfg.Address
+	t.appliedRoutes = nil
+	t.connectedAt = time.Now()
+	t.status = StatusConnected
+	t.mu.Unlock()
+	slog.Info("wireguard tunnel up from existing TUN", "iface", realName, "addr", cfg.Address, "os", runtime.GOOS)
+	return nil
+}
+
 // Disconnect tears down routes, WireGuard, and the TUN device.
 // Critical: always remove tracked routes first so a failed global session
 // cannot leave 0.0.0.0/1 half-routes that break host networking.
