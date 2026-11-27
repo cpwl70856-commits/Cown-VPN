@@ -139,6 +139,16 @@ func TestFixedMTU(t *testing.T) {
 	}
 }
 
+func TestGoModRecordsGobindTool(t *testing.T) {
+	body, err := os.ReadFile(filepath.Join(moduleRoot(t), "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "tool golang.org/x/mobile/cmd/gobind") {
+		t.Fatal("go.mod must record gobind as a tool so gomobile bind works on a clean checkout")
+	}
+}
+
 func TestBuildScriptDocumentsRequiredEnv(t *testing.T) {
 	path := filepath.Join(moduleRoot(t), "android", "scripts", "build_aar.sh")
 	info, err := os.Stat(path)

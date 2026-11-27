@@ -10,7 +10,7 @@ AAR **不提交**。没有手机或模拟器时，不需要安装或运行应用
 
 | 工具 | 作用 |
 |------|------|
-| Go 1.23+ | 编译 `pkg/wgmobile` |
+| Go 1.26+ | 编译 `pkg/wgmobile`（`go.mod` 的 go 行）。Go 1.27 可以 |
 | Android SDK | `ANDROID_HOME`，含 API 35 |
 | Android NDK | `ANDROID_NDK_HOME`（Android Studio → SDK Manager → NDK Side by side） |
 | gomobile 与 gobind | 绑定 Go 为 AAR |
@@ -29,7 +29,7 @@ gomobile init
 ./android/scripts/build_aar.sh
 ```
 
-脚本会检查 `go`、`gomobile`、`gobind`、`ANDROID_HOME`、`ANDROID_NDK_HOME`，缺任何一项都会直接退出并说明缺什么。成功后写出：
+脚本会检查 `go`、`gomobile`、`gobind`、`ANDROID_HOME`、`ANDROID_NDK_HOME`，缺任何一项都会直接退出并说明缺什么。`go.mod` 里已经有 `tool golang.org/x/mobile/cmd/gobind`，干净检出不需要再执行 `go get -tool`。成功后写出：
 
 ```text
 android/app/libs/wgmobile.aar

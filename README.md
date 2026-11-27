@@ -116,7 +116,7 @@ Listen Port 留空由系统分配，或关掉占用该 UDP 端口的进程。
 
 ## Android
 
-在装有 **Go、gomobile、Android Studio（SDK 35 + NDK）** 的 Mac 上，于仓库根目录：
+在装有 **Go 1.26+（1.27 可以）、gomobile、Android Studio（SDK 35 + NDK）** 的 Mac 上，于仓库根目录：
 
 ```bash
 export ANDROID_HOME="$HOME/Library/Android/sdk"

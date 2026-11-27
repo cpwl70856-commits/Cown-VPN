@@ -16,6 +16,8 @@
 #                     go install golang.org/x/mobile/cmd/gobind@latest
 #                     export PATH="$(go env GOPATH)/bin:$PATH"
 #                     gomobile init
+#   Go 1.26+          go.mod already records tool golang.org/x/mobile/cmd/gobind.
+#                     A clean checkout does not need `go get -tool`.
 #
 # The AAR is a build product and is not committed. Open the android/ directory
 # in Android Studio after this script succeeds.
