@@ -3,10 +3,10 @@ bin/
 *.dll
 *.so
 *.dylib
-mywgclient
-mywgclient.app
-mywgserver
-mywgkeygen
+/mywgclient
+/mywgclient.app
+/mywgserver
+/mywgkeygen
 *.tar.xz
 dist/
 .DS_Store
@@ -17,3 +17,13 @@ dist/
 *.xcframework/
 platforms/ios/WGCore.xcframework/
 platforms/ios/build/
+
+# Android Studio. The app does not need a local AAR; ignore one if the optional script writes it.
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/app/libs/*.aar
+android/.cxx/
+*.apk
+*.aab

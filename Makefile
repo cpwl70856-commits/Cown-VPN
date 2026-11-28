@@ -5,7 +5,7 @@ MODULE    := github.com/user/mywgclient
 ICON      := assets/Icon.png
 FYNE      ?= fyne
 
-.PHONY: all tidy build client server keygen mobile test run package-linux package-darwin package-windows clean
+.PHONY: all tidy build client server keygen mobile android-aar test run package-linux package-darwin package-windows clean
 
 all: tidy build
 
@@ -23,9 +23,14 @@ server:
 keygen:
 	go build -o bin/$(KEYGEN) ./cmd/keygen
 
-# Compile-check the gomobile package (actual XCFramework needs Mac + gomobile).
+# Compile-check the gomobile package (actual XCFramework / AAR needs gomobile).
 mobile:
 	go build ./pkg/wgmobile
+
+# Optional gomobile AAR. The Android app uses the Maven tunnel artifact and
+# does not need this file. See android/README.md.
+android-aar:
+	./android/scripts/build_aar.sh
 
 test:
 	go test ./...

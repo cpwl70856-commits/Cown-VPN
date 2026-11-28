@@ -10,7 +10,8 @@ Cown VPN 是跨平台 WireGuard **桌面**客户端，基于 [wireguard-go](http
 | macOS | 完整（`utun` + `route`/`ifconfig`） |
 | Windows | 完整（需 **Wintun** + 管理员） |
 
-> iOS/iPadOS 为独立 Network Extension 模板，见 `platforms/ios/`（本 README 聚焦桌面）。
+> iOS/iPadOS 为独立 Network Extension 模板，见 `platforms/ios/`。  
+> Android 客户端在 `android/`，依赖 Maven 上的 `com.wireguard.android:tunnel`，不需要本地 AAR。详见 [android/README.md](android/README.md)。
 
 ---
 
@@ -113,6 +114,10 @@ Listen Port 留空由系统分配，或关掉占用该 UDP 端口的进程。
 
 配置目录：`~/.config/mywgclient/`（`settings.json`、`profiles/`、`profile.conf`）。
 
+## Android
+
+用 Android Studio 打开 **`android/`** 目录（或在该目录执行 `./gradlew assembleDebug`）。Gradle 会拉取 `com.wireguard.android:tunnel:1.0.20260102`，**不需要** Go、gomobile、NDK，也不需要 `./android/scripts/build_aar.sh`。界面可粘贴或导入 `.conf`，验证后连接；首次连接会请求 VPN 与通知权限。不要提交真实配置。详见 [android/README.md](android/README.md)。
+
 ## 开发
 
 ```bash
@@ -132,6 +137,9 @@ internal/ui/         Fyne 界面
 internal/platform/   权限 / Wintun / 自启动
 internal/diag/       连接诊断
 internal/errs/       中文友好错误
+pkg/wgmobile/        gomobile API（iOS）。Android 应用不再链接它
+android/             Android Studio 工程（官方 tunnel 依赖）
+platforms/ios/       iOS Network Extension 模板
 ```
 
 ## 许可与依赖
