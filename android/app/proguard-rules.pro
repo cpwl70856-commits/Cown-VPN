@@ -1,2 +1,3 @@
-# gomobile bind emits the wgmobile package. Keep it if minification is turned on.
--keep class wgmobile.** { *; }
+# Release minify is off. If it is enabled, keep the tunnel JNI entry points.
+-keep class com.wireguard.android.backend.** { *; }
+-keep class com.wireguard.crypto.** { *; }

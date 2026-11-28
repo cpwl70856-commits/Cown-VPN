@@ -1,7 +1,6 @@
 package com.user.mywgclient
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.VpnService
 import android.os.Build
@@ -12,7 +11,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.user.mywgclient.databinding.ActivityMainBinding
-import wgmobile.Wgmobile
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
@@ -55,7 +53,7 @@ class MainActivity : AppCompatActivity() {
 
     private val vpnConsent = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
-            startTunnelService()
+            startTunnel()
         } else {
             show(getString(R.string.vpn_denied))
         }
@@ -103,15 +101,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        try {
-            val go = Wgmobile.status()
-            val shown = TunnelState.status.value
-            if (go == "connected" || (go == "disconnected" && shown != "connecting")) {
-                TunnelState.status.value = go
-            }
-        } catch (_: Exception) {
-            // The AAR is present whenever this activity compiles.
-        }
+        TunnelController.publishState()
     }
 
     override fun onDestroy() {
@@ -122,9 +112,7 @@ class MainActivity : AppCompatActivity() {
     private fun onConnectClicked() {
         val status = TunnelState.status.value
         if (status == "connected" || status == "connecting") {
-            startService(
-                Intent(this, CownVpnService::class.java).setAction(CownVpnService.ACTION_DISCONNECT),
-            )
+            TunnelController.enqueueDisconnect(this)
             return
         }
         val text = binding.conf.text?.toString().orEmpty()
@@ -145,42 +133,36 @@ class MainActivity : AppCompatActivity() {
         if (intent != null) {
             vpnConsent.launch(intent)
         } else {
-            startTunnelService()
+            startTunnel()
         }
     }
 
-    private fun startTunnelService() {
-        ContextCompat.startForegroundService(
-            this,
-            Intent(this, CownVpnService::class.java).setAction(CownVpnService.ACTION_CONNECT),
-        )
+    private fun startTunnel() {
+        TunnelState.status.value = "connecting"
+        TunnelState.message.value = ""
+        val text = ConfStore.read(this).orEmpty()
+        TunnelController.enqueueConnect(this, text)
     }
 
     private fun validate(text: String, announce: Boolean): Boolean {
-        val trimmed = text.trim()
-        if (trimmed.isEmpty()) return fail(getString(R.string.err_empty))
-        if (trimmed.length > MAX_CONF_CHARS) return fail(getString(R.string.import_too_large))
-        return try {
-            val hints = tunnelHints(Wgmobile.parseConf(trimmed))
-            // Discard the UAPI string. It contains key material; the call only checks that keys parse.
-            check(Wgmobile.buildUAPI(trimmed).isNotEmpty())
-            val address = hints.address ?: return fail(getString(R.string.err_address))
-            if (hints.routes.isEmpty()) return fail(getString(R.string.err_no_route))
-            if (announce) {
-                ConfStore.write(this, trimmed)
-                show(
-                    getString(
-                        R.string.validated,
-                        address.toString(),
-                        hints.endpoint.ifEmpty { "—" },
-                        if (hints.dns.isEmpty()) "—" else hints.dns.joinToString(", "),
-                        hints.routes.joinToString(", "),
-                    ),
-                )
+        return when (val inspection = inspectConfig(text)) {
+            is ConfigInspection.Rejected -> fail(configFailureText(this, inspection.failure))
+            is ConfigInspection.Ready -> {
+                if (announce) {
+                    ConfStore.write(this, text.trim())
+                    val summary = inspection.summary
+                    show(
+                        getString(
+                            R.string.validated,
+                            summary.address,
+                            summary.endpoint.ifEmpty { "—" },
+                            summary.dns.ifEmpty { "—" },
+                            summary.routes,
+                        ),
+                    )
+                }
+                true
             }
-            true
-        } catch (e: Exception) {
-            fail(getString(R.string.err_invalid, e.message ?: e.javaClass.simpleName))
         }
     }
 
@@ -194,7 +176,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val MAX_CONF_CHARS = 256 * 1024
         private val PLACEHOLDER = """
             [Interface]
             PrivateKey = REPLACE_CLIENT_PRIVATE_KEY

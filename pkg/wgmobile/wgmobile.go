@@ -6,17 +6,16 @@
 //	gomobile init
 //	gomobile bind -target=ios -o WGMobile.xcframework github.com/user/mywgclient/pkg/wgmobile
 //
-// Android (on a machine with the Android SDK, NDK, and gomobile):
+// The Android app under android/ does not link this package. It depends on
+// com.wireguard.android:tunnel and starts the tunnel with GoBackend.setState.
+// android/scripts/build_aar.sh can still bind this package to an AAR, but that
+// file is not required to build or run the Android app.
 //
-//	./android/scripts/build_aar.sh
-//
-// That writes android/app/libs/wgmobile.aar. On iOS you generally cannot call
-// CreateTUN from a normal process. Prefer ParseConf / BuildUAPI from the Packet
-// Tunnel provider together with packet I/O bridged through NEPacketTunnelFlow
-// (or WireGuardKit). On Android, VpnService creates the TUN; call SetProtector
-// and StartWithFD with that file descriptor. Start/Stop below use wireguard-go
-// userspace when the host provides a usable TUN (desktop / some extension
-// setups); treat them as a thin control plane for status and UAPI.
+// On iOS you generally cannot call CreateTUN from a normal process. Prefer
+// ParseConf / BuildUAPI from the Packet Tunnel provider together with packet
+// I/O bridged through NEPacketTunnelFlow (or WireGuardKit). Start/Stop below
+// use wireguard-go userspace when the host provides a usable TUN (desktop /
+// some extension setups); treat them as a thin control plane for status and UAPI.
 package wgmobile
 
 import (

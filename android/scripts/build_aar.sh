@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# Build android/app/libs/wgmobile.aar from pkg/wgmobile.
+# Optional: build android/app/libs/wgmobile.aar from pkg/wgmobile.
+#
+# The Android app does not use this AAR. Open android/ in Android Studio
+# (or run ./gradlew from android/) and Gradle pulls
+# com.wireguard.android:tunnel from Maven Central. See android/README.md.
+# This script remains only for a gomobile binding of pkg/wgmobile.
 #
 # Run from the repository root (any working directory is fine; paths are
 # resolved from this file):
@@ -19,8 +24,7 @@
 #   Go 1.26+          go.mod already records tool golang.org/x/mobile/cmd/gobind.
 #                     A clean checkout does not need `go get -tool`.
 #
-# The AAR is a build product and is not committed. Open the android/ directory
-# in Android Studio after this script succeeds.
+# The AAR is a build product and is not committed. The Android app never reads it.
 
 set -euo pipefail
 

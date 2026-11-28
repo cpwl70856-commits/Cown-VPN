@@ -13,6 +13,8 @@
     <string name="err_invalid">配置无效：%1$s</string>
     <string name="err_no_route">没有可用的 AllowedIPs 路由</string>
     <string name="err_address">无法解析 Address（需要 10.8.0.2/24 这种写法）</string>
+    <string name="err_dns">无法解析 Endpoint：%1$s</string>
+    <string name="err_dns_unknown">无法解析 Endpoint</string>
     <string name="validated">配置有效\n地址 %1$s\nEndpoint %2$s\nDNS %3$s\nAllowedIPs %4$s</string>
     <string name="vpn_denied">未授予 VPN 权限，无法连接</string>
     <string name="vpn_revoked">系统已关闭 VPN</string>

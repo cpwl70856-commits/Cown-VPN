@@ -27,8 +27,8 @@ keygen:
 mobile:
 	go build ./pkg/wgmobile
 
-# Bind pkg/wgmobile to android/app/libs/wgmobile.aar. Needs ANDROID_HOME,
-# ANDROID_NDK_HOME, and gomobile. See android/README.md.
+# Optional gomobile AAR. The Android app uses the Maven tunnel artifact and
+# does not need this file. See android/README.md.
 android-aar:
 	./android/scripts/build_aar.sh
 

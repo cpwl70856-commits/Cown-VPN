@@ -28,6 +28,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // tunnel 1.0.20260102 uses Java 8+ APIs (Optional, streams, records).
+        isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
         jvmTarget = "17"
@@ -40,26 +42,13 @@ android {
     }
 }
 
-val wgmobileAar = layout.projectDirectory.file("libs/wgmobile.aar").asFile
-
 dependencies {
-    implementation(files(wgmobileAar))
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    implementation("com.wireguard.android:tunnel:1.0.20260102")
     // These stay on the compileSdk 35 line. Newer AndroidX releases require
     // compileSdk 36+ and a newer Android Gradle Plugin.
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
-}
-
-tasks.configureEach {
-    if (name == "preBuild") {
-        doFirst {
-            if (!wgmobileAar.isFile) {
-                throw GradleException(
-                    "Missing ${wgmobileAar.path}. From the repo root run ./android/scripts/build_aar.sh " +
-                        "(needs Go, gomobile, ANDROID_HOME, and ANDROID_NDK_HOME). See android/README.md.",
-                )
-            }
-        }
-    }
+    testImplementation("junit:junit:4.13.2")
 }
